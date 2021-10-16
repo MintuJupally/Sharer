@@ -1,0 +1,22 @@
+{
+  "name": "sharing",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^10.0.0",
+    "express": "^4.17.1",
+    "find-free-port": "^2.0.0",
+    "helmet": "^4.6.0",
+    "multer": "^1.4.3",
+    "socket.io": "^4.2.0",
+    "uuid": "^8.3.2"
+  }
+}
