@@ -11,8 +11,6 @@ const globalErrorHandler = require("./controllers/errorController");
 
 const app = express();
 
-console.log("hey");
-
 app.use(cors());
 
 app.use(

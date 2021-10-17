@@ -49,6 +49,10 @@ const Send = () => {
   const initialiseSocket = () => {
     socket = io.connect(`http://${address.host}:${address.port}/`);
 
+    socket.on("connect_error", (err) => {
+      console.log(err);
+    });
+
     socket.on("error", (err) => {
       console.log(err);
     });

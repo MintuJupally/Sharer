@@ -11,8 +11,6 @@ const globalErrorHandler = require("./controllers/errorController");
 
 const app = express();
 
-console.log("hey from socketApp.js");
-
 app.use(cors());
 
 app.use(
