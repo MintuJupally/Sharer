@@ -2,6 +2,8 @@ const dotenv = require("dotenv");
 dotenv.config();
 const getPort = require("find-free-port");
 
+const electron = require("electron");
+
 const os = require("os");
 
 const app = require("./app");
@@ -9,16 +11,24 @@ const socketApp = require("./socketApp");
 const AppError = require("./utils/appError");
 
 const BusBoy = require("busboy");
+const EventEmitter = require("events");
 
 const fs = require("fs");
 
 let server = null;
+
+const portEvents = new EventEmitter();
+
+let path = electron.app.getPath("documents");
+const downloadPath = path.split("\\").join("/") + "/Sharer/";
 
 getPort(3000, (err, port) => {
   if (err) {
     console.error(err);
     return;
   }
+
+  portEvents.emit("port", port);
 
   // Main Server
   server = app.listen(port, () => {
@@ -117,7 +127,7 @@ getPort(3000, (err, port) => {
 
             if (!writer[filename]) {
               writer[filename] = fs.createWriteStream(
-                `${process.env.DESTINATION}${filename}`
+                `${downloadPath}${filename}`
               );
             }
 
@@ -127,15 +137,6 @@ getPort(3000, (err, port) => {
           socket.on("close-stream", (filename) => {
             writer[filename].end();
           });
-        });
-
-        socket.on("disconnect", (reason) => {
-          console.log(reason);
-
-          console.log(
-            `Broadcasting user-disconnected event of user ${socket.id}`
-          );
-          // socket.broadcast.to(roomId).emit("user-disconnected", socket.id);
         });
       });
     });
@@ -239,3 +240,10 @@ process.on("SIGTERM", () => {
     console.log("💥 Process terminated!");
   });
 });
+
+const serverPort = () => {
+  console.log(PORT);
+  // return PORT;
+};
+
+module.exports = portEvents;

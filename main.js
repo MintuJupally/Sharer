@@ -1,10 +1,10 @@
 const { app, BrowserWindow } = require("electron");
 
-const server = require("./server");
+const portEvents = require("./server");
 
 let mainWindow;
 
-function createWindow() {
+const createWindow = (port) => {
   mainWindow = new BrowserWindow({
     width: 800,
     height: 500,
@@ -13,13 +13,38 @@ function createWindow() {
     },
   });
 
-  mainWindow.loadURL("http://localhost:3000");
+  mainWindow.setMenuBarVisibility(false);
+
+  mainWindow.loadURL(`http://localhost:${port}`);
   mainWindow.on("closed", function () {
     mainWindow = null;
   });
-}
+};
 
-app.on("ready", createWindow);
+const createMainWindow = (PORT) => {
+  setTimeout(() => {
+    mainWindow.close();
+    createWindow(PORT);
+  }, 2000);
+
+  portEvents.removeAllListeners("port");
+};
+
+const createLoadingWindow = () => {
+  mainWindow = new BrowserWindow({
+    width: 300,
+    height: 200,
+    frame: false,
+    resizable: false,
+  });
+
+  mainWindow.loadFile("./loading.html");
+};
+
+app.on("ready", () => {
+  createLoadingWindow();
+  portEvents.on("port", createMainWindow);
+});
 
 app.on("resize", function (e, x, y) {
   mainWindow.setSize(x, y);
