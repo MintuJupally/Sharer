@@ -10,7 +10,7 @@ const App = () => {
 
   return (
     <div className="App">
-      <div>{routing}</div>
+      <div style={{ minHeight: "100vh", width: "100%" }}>{routing}</div>
     </div>
   );
 };

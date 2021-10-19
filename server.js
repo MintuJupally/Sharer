@@ -22,6 +22,16 @@ const portEvents = new EventEmitter();
 let path = electron.app.getPath("documents");
 const downloadPath = path.split("\\").join("/") + "/Sharer/";
 
+fs.access(downloadPath, fs.constants.R_OK | fs.constants.W_OK, (err) => {
+  if (err) {
+    if (err.code === "ENOENT") {
+      fs.mkdir(downloadPath, (err) => {
+        if (err) console.error(err);
+      });
+    }
+  }
+});
+
 getPort(3000, (err, port) => {
   if (err) {
     console.error(err);
@@ -33,6 +43,43 @@ getPort(3000, (err, port) => {
   // Main Server
   server = app.listen(port, () => {
     console.log("App running on localhost:" + port);
+  });
+
+  const localIo = require("socket.io")(server);
+
+  localIo.on("connection", (socket) => {
+    console.log(`Local => New user ${socket.id}`);
+    socket.emit("connected", socket.id);
+
+    socket.on("join-room", (roomId, userId) => {
+      socket.join(roomId);
+
+      socket.on("disconnect", (reason) => {
+        console.log(reason);
+
+        console.log(
+          `Local => Broadcasting user-disconnected event of user ${userId}`
+        );
+        socket.broadcast.to(roomId).emit("user-disconnected", userId);
+      });
+
+      let writer = {};
+
+      socket.on("save-stream", (filename, stream, buffInd) => {
+        // console.log({ stream, index: buffInd });
+
+        if (!writer[filename]) {
+          writer[filename] = fs.createWriteStream(`${downloadPath}${filename}`);
+        }
+
+        writer[filename].write(stream);
+      });
+
+      socket.on("close-stream", (filename) => {
+        console.log("Download complete " + filename);
+        writer[filename].end();
+      });
+    });
   });
 
   let mainSocket = null;
@@ -87,7 +134,7 @@ getPort(3000, (err, port) => {
 
         if (!mainSocket) mainSocket = socket;
 
-        socket.on("join-room", (roomId, userId, mainId) => {
+        socket.on("join-room", (roomId, userId) => {
           const roomClients = io.sockets.adapter.rooms.get(roomId) || {
             size: 0,
           };
