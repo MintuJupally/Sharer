@@ -38,6 +38,18 @@ input{
   font-size: 20px;
 }
 
+/* Chrome, Safari, Edge, Opera */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
 button{
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   /* padding: 9px 20px;

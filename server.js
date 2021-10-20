@@ -1,19 +1,18 @@
 const dotenv = require("dotenv");
 dotenv.config();
-const getPort = require("find-free-port");
-
-const electron = require("electron");
-
-const os = require("os");
 
 const app = require("./app");
 const socketApp = require("./socketApp");
 const AppError = require("./utils/appError");
 
+const os = require("os");
+const fs = require("fs");
+
+const getPort = require("find-free-port");
+const electron = require("electron");
 const BusBoy = require("busboy");
 const EventEmitter = require("events");
-
-const fs = require("fs");
+const find = require("local-devices");
 
 let server = null;
 
@@ -89,6 +88,7 @@ getPort(3000, (err, port) => {
 
   const getNetworkAddress = () => {
     const nets = os.networkInterfaces();
+    // console.log(nets);
     const address = nets["Wi-Fi"].find((el) => el.family === "IPv4").address;
     return address;
   };
@@ -130,7 +130,7 @@ getPort(3000, (err, port) => {
 
       io.on("connection", (socket) => {
         console.log("New Connection - " + socket.id);
-        socket.emit("connected", socket.id);
+        socket.emit("connected", socket.id, os.hostname());
 
         if (!mainSocket) mainSocket = socket;
 
@@ -206,6 +206,17 @@ getPort(3000, (err, port) => {
 
   app.get("/network-address", (req, res, next) => {
     res.send(getNetworkAddress());
+  });
+
+  app.get("/network-devices", (req, res, next) => {
+    find()
+      .then((devices) => {
+        res.send(devices);
+      })
+      .catch((err) => {
+        console.log(err);
+        res.status(500).send({ message: "Something went wrong!", err });
+      });
   });
 
   app.post("/send", (req, res, next) => {
@@ -287,10 +298,5 @@ process.on("SIGTERM", () => {
     console.log("💥 Process terminated!");
   });
 });
-
-const serverPort = () => {
-  console.log(PORT);
-  // return PORT;
-};
 
 module.exports = portEvents;
