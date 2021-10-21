@@ -41,23 +41,37 @@ const createLoadingWindow = () => {
   mainWindow.loadFile("./loading.html");
 };
 
-app.on("ready", () => {
-  createLoadingWindow();
-  portEvents.on("port", createMainWindow);
-});
+const gotLock = app.requestSingleInstanceLock();
 
-app.on("resize", function (e, x, y) {
-  mainWindow.setSize(x, y);
-});
+if (!gotLock) {
+  app.quit();
+} else {
+  app.on("second-instance", (event, commandLine, workingDirectory) => {
+    // Focusing window on second instance
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
 
-app.on("window-all-closed", function () {
-  if (process.platform !== "darwin") {
-    app.quit();
-  }
-});
+  app.on("ready", () => {
+    createLoadingWindow();
+    portEvents.on("port", createMainWindow);
+  });
 
-app.on("activate", function () {
-  if (mainWindow === null) {
-    createWindow();
-  }
-});
+  app.on("resize", function (e, x, y) {
+    mainWindow.setSize(x, y);
+  });
+
+  app.on("window-all-closed", function () {
+    if (process.platform !== "darwin") {
+      app.quit();
+    }
+  });
+
+  app.on("activate", function () {
+    if (mainWindow === null) {
+      createWindow();
+    }
+  });
+}

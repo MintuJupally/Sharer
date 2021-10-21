@@ -7,6 +7,7 @@ import Devices from "./Devices";
 
 import axios from "axios";
 import io from "socket.io-client";
+import ComputerRoundedIcon from "@mui/icons-material/ComputerRounded";
 
 let socket = null;
 let localSocket = null;
@@ -19,21 +20,50 @@ let globalFiles = new Map();
 let globalDevices = [];
 let posResCount = 0;
 
+const Measures = () => {
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        fontSize: "20px",
+        fontStyle: "italic",
+      }}
+    >
+      <ul
+        style={{
+          listStyle: "none",
+          textAlign: "left",
+          width: "min(800px, 90vw)",
+        }}
+      >
+        <li style={{ margin: "10px 0px" }}>
+          1.&emsp; The PORT here is the Port number the sender is streaming
+          files into.
+        </li>
+        <li style={{ margin: "10px 0px" }}>
+          2.&emsp; Make sure the Sender has initiated the SEND session.
+          Otherwise the device cannot be discovered for connection.
+        </li>
+      </ul>
+    </div>
+  );
+};
+
 const Receive = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [port, setPort] = useState(null);
   const [resCount, setResCount] = useState(0);
 
-  const [address, setAddress] = useState(null);
   const [errText, setErrText] = useState("");
 
   const [files, setFiles] = useState([]);
   const [devices, setDevices] = useState([]);
   const [connectedDevice, setConnectedDevice] = useState(null);
+  const [connStatus, setConnStatus] = useState(-1);
 
   const initialiseSocket = () => {
-    setIsLoading(true);
-    socket = io.connect(`http://${address}:${port}/`);
+    socket = io.connect(`http://${connectedDevice.ip}:${port}/`);
     localSocket = io.connect("/");
 
     localSocket.on("connected", (locId) => {
@@ -66,16 +96,14 @@ const Receive = () => {
 
       console.log("My id : " + myId);
 
-      setIsLoading(true);
       socket.emit("join-room", "app-room-00", myId);
 
       socket.on("room_created", async () => {
-        setIsLoading(false);
         console.log("Room created");
       });
 
       socket.on("room_joined", async () => {
-        setIsLoading(false);
+        setConnStatus(1);
         console.log("Room joined");
       });
 
@@ -116,34 +144,24 @@ const Receive = () => {
 
     socket.on("connect_error", (err) => {
       console.error(err);
-
-      setIsLoading(false);
-      setErrText("Invalid Port");
+      setConnStatus(0);
 
       socket.disconnect();
     });
 
     socket.on("disconnect", (reason) => {
       console.log(reason);
+      setConnStatus(0);
 
       socket.disconnect();
     });
 
     socket.on("error", (err) => {
       console.log(err);
-    });
-  };
+      setConnStatus(0);
 
-  const getAddress = () => {
-    axios
-      .get("/network-address")
-      .then((res) => {
-        // console.log(res.data);
-        setAddress(res.data);
-      })
-      .catch((err) => {
-        console.log(err.response.data);
-      });
+      socket.disconnect();
+    });
   };
 
   const checkDevice = (ip) => {
@@ -224,7 +242,14 @@ const Receive = () => {
   }, [devices]);
 
   useEffect(() => {
-    if (resCount > 0 && resCount === globalDevices.length) {
+    if (connectedDevice) {
+      setIsLoading(false);
+      initialiseSocket();
+    }
+  }, [connectedDevice]);
+
+  useEffect(() => {
+    if (resCount > 0 && posResCount + resCount === globalDevices.length) {
       if (posResCount === 0) {
         setErrText(`No devices on ${port}! Try again`);
         clearStates();
@@ -237,6 +262,8 @@ const Receive = () => {
     setPort(null);
     setResCount(0);
     globalDevices = [];
+    setConnectedDevice(null);
+    setConnStatus(-1);
   };
 
   const disconnectSockets = () => {
@@ -257,12 +284,11 @@ const Receive = () => {
             style={{
               display: "flex",
               justifyContent: "center",
-              margin: "10px 0px",
+              margin: "30px 0px 20px 0px",
             }}
           >
             <input
               key="port-inp"
-              type="text"
               id="port-num"
               placeholder="PORT"
               type="number"
@@ -298,14 +324,15 @@ const Receive = () => {
                   } else setErrText("Invalid port");
                 } else setErrText("Port can't be empty");
               }}
-              disableRipple={isLoading || !address}
-              disableTouchRipple={isLoading || !address}
-              disableFocusRipple={isLoading || !address}
+              disableRipple={isLoading}
+              disableTouchRipple={isLoading}
+              disableFocusRipple={isLoading}
             >
               Connect
             </Button>
           </div>
           <div style={{ fontSize: "17px" }}>{errText}</div>
+          <Measures />
         </div>
       ) : null}
 
@@ -316,7 +343,7 @@ const Receive = () => {
             <CircularProgress color="secondary" />
           </div>
         </div>
-      ) : port ? (
+      ) : port && !connectedDevice ? (
         <div
           style={{
             margin: "30px 0px",
@@ -324,16 +351,71 @@ const Receive = () => {
             fontWeight: 500,
           }}
         >
-          DEVICES DISCOVERED
+          DEVICES DISCOVERED -
+          <b style={{ fontSize: "22px", fontWeight: 700 }}>
+            {" [" + devices.length + "]"}
+          </b>
+        </div>
+      ) : null}
+
+      {connectedDevice ? (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderBottom: "1px solid white",
+            width: "min(800px,90vw)",
+            margin: "auto",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "left",
+              width: "min(800px,90vw)",
+            }}
+          >
+            <div>
+              <ComputerRoundedIcon
+                style={{ height: "70px", width: "70px", margin: "20px" }}
+              />
+            </div>
+            <div>
+              <h2 style={{ margin: 0 }}>{connectedDevice.name}</h2>
+              <div>{connectedDevice.ip}</div>
+            </div>
+          </div>
+          <div
+            style={
+              connStatus === -1
+                ? { color: "#9c27b0" }
+                : connStatus === 1
+                ? { color: "lightgreen" }
+                : { color: "red" }
+            }
+          >
+            {connStatus === -1
+              ? "Connecting..."
+              : connStatus === 1
+              ? "Connected"
+              : "Failed"}
+          </div>
         </div>
       ) : null}
 
       {!connectedDevice ? (
-        <Devices devices={devices} />
+        <Devices
+          devices={devices}
+          handleClick={(dev) => {
+            setConnectedDevice(dev);
+          }}
+        />
       ) : (
         <Grid
           container
-          style={{ width: "90vw", margin: "0 5vw" }}
+          style={{ width: "90vw", margin: "20px auto" }}
           // style={{ display: "flex", flexWrap: "wrap", width: "90vw" }}
           spacing={1}
         >

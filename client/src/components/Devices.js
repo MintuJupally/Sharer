@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 
 import { Button } from "@mui/material";
+import ComputerRoundedIcon from "@mui/icons-material/ComputerRounded";
 
 import { makeStyles } from "@mui/styles";
 
@@ -9,7 +10,7 @@ const useStyles = makeStyles(() => ({
     color: "white",
   },
 }));
-const Devices = ({ devices }) => {
+const Devices = ({ devices, handleClick }) => {
   const classes = useStyles();
   //   useEffect(() => {
   //     setAllDev(devices);
@@ -29,11 +30,28 @@ const Devices = ({ devices }) => {
                   backgroundColor: "rgb(60, 60, 70)",
                   borderRadius: 0,
                   fontSize: "17px",
+                  display: "flex",
+                  justifyContent: "left",
+                  margin: "auto",
                 }}
                 className={classes.deviceButton}
+                onClick={() => {
+                  handleClick(dev);
+                }}
               >
-                {dev.ip}
-                {dev.name}
+                <div style={{ display: "flex", alignItems: "center" }}>
+                  <ComputerRoundedIcon />
+                </div>
+                <div
+                  style={{
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    marginLeft: "20px",
+                  }}
+                >
+                  {dev.name}
+                </div>
               </Button>
             </div>
           );

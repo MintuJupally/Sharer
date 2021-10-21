@@ -6,7 +6,8 @@
   "main": "main.js",
   "scripts": {
     "start": "nodemon server.js",
-    "app": "electron main.js"
+    "app": "electron main.js",
+    "build": "electron-builder build --win --publish never"
   },
   "keywords": [],
   "author": "",

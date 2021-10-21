@@ -211,6 +211,7 @@ getPort(3000, (err, port) => {
   app.get("/network-devices", (req, res, next) => {
     find()
       .then((devices) => {
+        console.log(devices);
         res.send(devices);
       })
       .catch((err) => {
@@ -279,6 +280,11 @@ getPort(3000, (err, port) => {
     });
 
     req.pipe(busboy);
+  });
+
+  app.post("/open-download-folder", (req, res, next) => {
+    electron.shell.openPath(downloadPath);
+    electron.shell.beep();
   });
 });
 
