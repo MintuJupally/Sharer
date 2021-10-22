@@ -54,6 +54,7 @@ const Receive = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [port, setPort] = useState(null);
   const [resCount, setResCount] = useState(0);
+  const [myServer, setMyServer] = useState(null);
 
   const [errText, setErrText] = useState("");
 
@@ -96,7 +97,7 @@ const Receive = () => {
 
       console.log("My id : " + myId);
 
-      socket.emit("join-room", "app-room-00", myId);
+      socket.emit("join-room", "app-room-00", myId, myServer);
 
       socket.on("room_created", async () => {
         console.log("Room created");
@@ -223,6 +224,15 @@ const Receive = () => {
   };
 
   useEffect(() => {
+    axios
+      .get("/new-server")
+      .then((res) => {
+        setMyServer(res.data.host + ":" + res.data.port);
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+
     return () => {
       if (socket) {
         socket.disconnect();
@@ -270,7 +280,7 @@ const Receive = () => {
     console.log("disconnecting...");
     console.log(sockets);
     for (let i = 0; i < sockets.length; i++) {
-      sockets[i].removeAllListeners();
+      // sockets[i].removeAllListeners();
       sockets[i].disconnect();
     }
   };

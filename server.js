@@ -11,6 +11,7 @@ const fs = require("fs");
 const getPort = require("find-free-port");
 const electron = require("electron");
 const BusBoy = require("busboy");
+const multer = require("multer");
 const EventEmitter = require("events");
 const find = require("local-devices");
 
@@ -30,6 +31,20 @@ fs.access(downloadPath, fs.constants.R_OK | fs.constants.W_OK, (err) => {
     }
   }
 });
+
+let storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, downloadPath);
+  },
+  filename: function (req, file, cb) {
+    // let extArray = file.mimetype.split("/");
+    // let extension = extArray[extArray.length - 1];
+    console.log(file);
+    cb(null, Date.now() + "-" + file.originalname);
+  },
+});
+
+const upload = multer({ storage: storage });
 
 getPort(3000, (err, port) => {
   if (err) {
@@ -65,7 +80,7 @@ getPort(3000, (err, port) => {
       let writer = {};
 
       socket.on("save-stream", (filename, stream, buffInd) => {
-        // console.log({ stream, index: buffInd });
+        console.log(filename, stream.size, buffInd);
 
         if (!writer[filename]) {
           writer[filename] = fs.createWriteStream(`${downloadPath}${filename}`);
@@ -119,6 +134,10 @@ getPort(3000, (err, port) => {
         console.log("New send socket running on " + address + ":" + port);
       });
 
+      socketApp.post("/file-data", upload.any(), (req, res, next) => {
+        console.log(req.files);
+      });
+
       res.status(200).json({ host: address, port });
 
       const io = require("socket.io")(socketServer, {
@@ -134,7 +153,7 @@ getPort(3000, (err, port) => {
 
         if (!mainSocket) mainSocket = socket;
 
-        socket.on("join-room", (roomId, userId) => {
+        socket.on("join-room", (roomId, userId, recServer) => {
           const roomClients = io.sockets.adapter.rooms.get(roomId) || {
             size: 0,
           };
@@ -150,6 +169,11 @@ getPort(3000, (err, port) => {
           } else {
             console.log(`Joining room ${roomId}`);
             socket.emit("room_joined", roomId, userId);
+
+            // TODO: only Sender should get this
+            socket.broadcast
+              .to(roomId)
+              .emit("new-user-connected", userId, recServer);
           }
 
           socket.on("disconnect", (reason) => {
@@ -208,6 +232,10 @@ getPort(3000, (err, port) => {
     res.send(getNetworkAddress());
   });
 
+  app.get("/server-url", (req, res, next) => {
+    res.send(getNetworkAddress() + ":" + socketPort);
+  });
+
   app.get("/network-devices", (req, res, next) => {
     find()
       .then((devices) => {
@@ -248,9 +276,9 @@ getPort(3000, (err, port) => {
 
         file.on("data", function (data) {
           const currIndex = ++buffIndex;
-          // console.log(
-          //   "S - File [" + fieldname + "] got " + data.length + " bytes"
-          // );
+          console.log(
+            "S - File [" + fieldname + "] got " + data.length + " bytes"
+          );
 
           mainSocket.broadcast
             .to("app-room-00")

@@ -17,6 +17,8 @@ const Send = () => {
   const [address, setAddress] = useState(null);
   const [files, setFiles] = useState([]);
 
+  const [connectedDevices, setConnectedDevices] = useState([]);
+
   const createServer = () => {
     axios
       .get("/new-server")
@@ -65,6 +67,11 @@ const Send = () => {
 
       socket.emit("join-room", "app-room-00", myId);
 
+      socket.on("new-user-connected", (userId, userServer) => {
+        console.log(userServer);
+        setConnectedDevices((dev) => [...dev, userServer]);
+      });
+
       socket.on("room_created", async () => {
         console.log("Room_created");
       });
@@ -79,20 +86,6 @@ const Send = () => {
 
       socket.disconnect();
     });
-  };
-
-  const sendMessage = () => {
-    // const inputField = document.getElementById("message-input");
-    // const message = inputField.value.trim();
-    // if (message === "") {
-    //   inputField.value = "";
-    //   return;
-    // }
-
-    socket.emit(
-      "send-message",
-      "[" + new Date().getTime() + "] MESSAGE FROM " + id
-    );
   };
 
   const handleFiles = (e) => {
@@ -113,12 +106,12 @@ const Send = () => {
     });
 
     axios
-      .post("/send", data)
+      .post(`http://${connectedDevices[0]}/file-data`, data)
       .then((res) => {
         console.log(res.data);
       })
       .catch((err) => {
-        console.log(err.response);
+        console.log(err);
       });
   };
 
