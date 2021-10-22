@@ -56,6 +56,7 @@ const Receive = () => {
   const [resCount, setResCount] = useState(0);
 
   const [errText, setErrText] = useState("");
+  const [myDevice, setMyDevice] = useState(null);
 
   const [files, setFiles] = useState([]);
   const [devices, setDevices] = useState([]);
@@ -79,16 +80,21 @@ const Receive = () => {
       setErrText("Cannot establish local socket connection");
 
       localSocket.disconnect();
+      localSocket = null;
     });
 
     localSocket.on("disconnect", (reason) => {
       console.log(reason);
 
       localSocket.disconnect();
+      localSocket = null;
     });
 
     localSocket.on("error", (err) => {
       console.log(err);
+
+      localSocket.disconnect();
+      localSocket = null;
     });
 
     socket.on("connected", async (myId) => {
@@ -96,7 +102,7 @@ const Receive = () => {
 
       console.log("My id : " + myId);
 
-      socket.emit("join-room", "app-room-00", myId);
+      socket.emit("join-room", "app-room-00", myId, myDevice);
 
       socket.on("room_created", async () => {
         console.log("Room created");
@@ -112,7 +118,9 @@ const Receive = () => {
       });
 
       socket.on("file-stream", (filename, stream, index) => {
-        // console.log({ filename, stream });
+        console.log(index, filename, stream, Date.now());
+        localSocket.emit("save-stream", filename, stream, index);
+
         if (!(filename in files)) {
           globalFiles.set(filename, false);
           let arr = [];
@@ -123,8 +131,6 @@ const Receive = () => {
 
           setFiles(arr);
         }
-
-        localSocket.emit("save-stream", filename, stream, index);
       });
 
       socket.on("end-stream", (filename) => {
@@ -151,6 +157,8 @@ const Receive = () => {
 
     socket.on("disconnect", (reason) => {
       console.log(reason);
+      if (reason === "ping timeout") return;
+
       setConnStatus(0);
 
       socket.disconnect();
@@ -223,6 +231,15 @@ const Receive = () => {
   };
 
   useEffect(() => {
+    axios
+      .get("/device-name")
+      .then((res) => {
+        setMyDevice(res.data);
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+
     return () => {
       if (socket) {
         socket.disconnect();

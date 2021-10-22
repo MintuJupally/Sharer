@@ -3,15 +3,14 @@ import React from "react";
 import { Button } from "@mui/material";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 
-const GoBack = ({ color, handle }) => {
+const GoBack = ({ color, task }) => {
   return (
     <div style={{ position: "absolute", top: 0, zIndex: 1 }}>
       <Button
         variant="outlined"
         color={color}
         onClick={() => {
-          console.log(handle);
-          if (handle) handle();
+          if (task) task();
           window.history.back();
         }}
       >

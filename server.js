@@ -31,6 +31,7 @@ fs.access(downloadPath, fs.constants.R_OK | fs.constants.W_OK, (err) => {
   }
 });
 
+// Getting port for localhost server
 getPort(3000, (err, port) => {
   if (err) {
     console.error(err);
@@ -63,19 +64,45 @@ getPort(3000, (err, port) => {
       });
 
       let writer = {};
+      let time = {};
+      let written = {};
 
       socket.on("save-stream", (filename, stream, buffInd) => {
-        // console.log({ stream, index: buffInd });
+        console.log(
+          "[" + buffInd + "] - " + stream.length + " - " + Date.now()
+        );
 
         if (!writer[filename]) {
-          writer[filename] = fs.createWriteStream(`${downloadPath}${filename}`);
+          writer[filename] = fs.createWriteStream(
+            `${downloadPath}${filename}`,
+            { highWaterMark: 128 * 1024 }
+          );
+          time[filename] = Date.now();
+          written[filename] = 0;
+
+          console.log(
+            filename +
+              " - writableHighWaterMark : " +
+              writer[filename].writableHighWaterMark
+          );
         }
 
-        writer[filename].write(stream);
+        writer[filename].write(stream, () => {
+          written[filename] += stream.length;
+          console.log(
+            "[" + buffInd + "] - " + stream.length + " " + written[filename]
+          );
+        });
       });
 
       socket.on("close-stream", (filename) => {
-        console.log("Download complete " + filename);
+        console.log(
+          "Download complete " +
+            filename +
+            " - " +
+            (Date.now() - time[filename]) / 1000 +
+            " s"
+        );
         writer[filename].end();
       });
     });
@@ -83,6 +110,7 @@ getPort(3000, (err, port) => {
 
   let mainSocket = null;
   let socketServer = null;
+  let socketServerSocket = null;
   let socketPort = null;
   let socketHost = null;
 
@@ -95,6 +123,7 @@ getPort(3000, (err, port) => {
 
   app.get("/new-server", (req, res, next) => {
     if (socketServer) {
+      console.log("Server already exists");
       res.status(403).json({
         message: "Socket Server already exists",
         host: socketHost,
@@ -128,13 +157,17 @@ getPort(3000, (err, port) => {
         },
       });
 
+      socketServerSocket = io;
+
+      let senderId = null;
+
       io.on("connection", (socket) => {
         console.log("New Connection - " + socket.id);
         socket.emit("connected", socket.id, os.hostname());
 
         if (!mainSocket) mainSocket = socket;
 
-        socket.on("join-room", (roomId, userId) => {
+        socket.on("join-room", (roomId, userId, deviceName) => {
           const roomClients = io.sockets.adapter.rooms.get(roomId) || {
             size: 0,
           };
@@ -146,10 +179,15 @@ getPort(3000, (err, port) => {
           // These events are emitted only to the sender socket.
           if (numberOfClients == 0) {
             console.log(`Creating room ${roomId}`);
+            senderId = userId;
             socket.emit("room_created", roomId, userId);
           } else {
             console.log(`Joining room ${roomId}`);
             socket.emit("room_joined", roomId, userId);
+
+            socket.broadcast
+              .to(senderId)
+              .emit("new-receiver", userId, deviceName);
           }
 
           socket.on("disconnect", (reason) => {
@@ -158,31 +196,10 @@ getPort(3000, (err, port) => {
             console.log(
               `Broadcasting user-disconnected event of user ${userId}`
             );
-            socket.broadcast.to(roomId).emit("user-disconnected", userId);
-          });
 
-          socket.on("send-message", (message) => {
             socket.broadcast
-              .to(roomId)
-              .emit("incoming-message", userId, message);
-          });
-
-          let writer = {};
-
-          socket.on("save-stream", (filename, stream, buffInd) => {
-            // console.log({ stream, index: buffInd });
-
-            if (!writer[filename]) {
-              writer[filename] = fs.createWriteStream(
-                `${downloadPath}${filename}`
-              );
-            }
-
-            writer[filename].write(stream);
-          });
-
-          socket.on("close-stream", (filename) => {
-            writer[filename].end();
+              .to(senderId)
+              .emit("receiver-disconnected", userId, deviceName);
           });
         });
       });
@@ -192,12 +209,13 @@ getPort(3000, (err, port) => {
   app.get("/close-server", (req, res) => {
     console.log("Checking send socket server to close ....");
     if (socketServer) {
+      socketServerSocket.disconnectSockets();
       socketServer.close(() => {
         console.log("Closing send socket server");
         socketServer = null;
         socketPort = null;
+        res.send("Socket Server Closed");
       });
-      res.send("Socket Server Closed");
     } else {
       console.log("No socket server");
       res.status(404).send("No Socket Server Found");
@@ -220,8 +238,16 @@ getPort(3000, (err, port) => {
       });
   });
 
+  app.get("/device-name", (req, res, next) => {
+    res.send(os.hostname());
+  });
+
   app.post("/send", (req, res, next) => {
-    let busboy = new BusBoy({ headers: req.headers });
+    let busboy = new BusBoy({
+      headers: req.headers,
+      highWaterMark: 100,
+      fileHwm: 100,
+    });
 
     busboy.on("file", function (fieldname, file, filename, encoding, mimetype) {
       if (fieldname === "toshare") {
@@ -246,11 +272,13 @@ getPort(3000, (err, port) => {
           name += pieces[i];
         } else name = filename;
 
+        console.log(file);
+
         file.on("data", function (data) {
           const currIndex = ++buffIndex;
-          // console.log(
-          //   "S - File [" + fieldname + "] got " + data.length + " bytes"
-          // );
+          console.log(
+            "S - File [" + fieldname + "] got " + data.length + " bytes"
+          );
 
           mainSocket.broadcast
             .to("app-room-00")

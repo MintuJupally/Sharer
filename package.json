@@ -30,6 +30,7 @@
   },
   "build": {
     "appId": "com.sharer.mintujupally",
+    "artifactName": "Sharer-${version}.${ext}",
     "directories": {
       "output": "build"
     },

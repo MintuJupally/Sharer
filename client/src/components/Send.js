@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import React from "react";
 
-import { IconButton, Grid, CircularProgress } from "@mui/material";
+import { IconButton, Grid, CircularProgress, Tooltip } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import SendIcon from "@mui/icons-material/Send";
+import DownloadingRoundedIcon from "@mui/icons-material/DownloadingRounded";
+import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 
 import io from "socket.io-client";
 
@@ -16,6 +18,10 @@ let id = null;
 const Send = () => {
   const [address, setAddress] = useState(null);
   const [files, setFiles] = useState([]);
+
+  const [fStatus, setFStatus] = useState([]);
+  const [myDevice, setMyDevice] = useState(null);
+  const [connDevices, setConnDevices] = useState([]);
 
   const createServer = () => {
     axios
@@ -72,6 +78,19 @@ const Send = () => {
       socket.on("room_joined", async () => {
         console.log("Room_joined");
       });
+
+      socket.on("new-receiver", (userId, deviceName) => {
+        setConnDevices((curr) => [...curr, { socketId: userId, deviceName }]);
+      });
+
+      socket.on("receiver-disconnected", (userId, deviceName) => {
+        console.log("Receiver disconnected " + userId, deviceName);
+        setConnDevices((curr) =>
+          curr.filter(
+            (dev) => dev.socketId !== userId && dev.deviceName !== deviceName
+          )
+        );
+      });
     });
 
     socket.on("disconnect", (reason) => {
@@ -81,36 +100,34 @@ const Send = () => {
     });
   };
 
-  const sendMessage = () => {
-    // const inputField = document.getElementById("message-input");
-    // const message = inputField.value.trim();
-    // if (message === "") {
-    //   inputField.value = "";
-    //   return;
-    // }
+  const handleFiles = (newFiles) => {
+    console.log(newFiles);
 
-    socket.emit(
-      "send-message",
-      "[" + new Date().getTime() + "] MESSAGE FROM " + id
-    );
-  };
-
-  const handleFiles = (e) => {
-    const newFiles = e.target.files;
-
-    let arr = [];
-    for (var i = 0; i < newFiles.length; i++) arr.push(newFiles[i]);
+    let arr = [],
+      st = [];
+    for (var i = 0; i < newFiles.length; i++) {
+      arr.push(newFiles[i]);
+      st.push(-1);
+    }
 
     const pastFiles = [...files];
     setFiles([...pastFiles, ...arr]);
+    setFStatus([...fStatus, ...st]);
   };
 
   const sendFiles = () => {
     const data = new FormData();
 
-    files.forEach((file) => {
-      data.append("toshare", file);
+    let currSt = [...fStatus];
+
+    files.forEach((file, index) => {
+      if (currSt[index] === -1) {
+        data.append("toshare", file);
+        currSt[index] = 0;
+      }
     });
+
+    setFStatus(currSt);
 
     axios
       .post("/send", data)
@@ -129,6 +146,10 @@ const Send = () => {
 
   useEffect(() => {
     createServer();
+
+    return () => {
+      if (socket) socket.disconnect();
+    };
   }, []);
 
   useEffect(() => {
@@ -146,7 +167,7 @@ const Send = () => {
         boxSizing: "border-box",
       }}
     >
-      <GoBack color="primary" />
+      <GoBack color="primary" task={closeServer} />
       {address ? (
         <div>
           <div>Communication through port {address.port}</div>
@@ -161,6 +182,14 @@ const Send = () => {
                   border: "1px dashed grey",
                   borderRadius: "10px",
                   cursor: "pointer",
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+
+                  handleFiles(event.dataTransfer.files);
+                }}
+                onDragOver={(event) => {
+                  event.preventDefault();
                 }}
               >
                 <p>
@@ -181,12 +210,14 @@ const Send = () => {
                     width: "80px",
                     height: "80px",
                     border: "2px solid",
-                    backgroundColor: "#1976D2",
+                    backgroundColor:
+                      connDevices.length === 0 ? "grey" : "#1976D2",
                   }}
                   onClick={() => {
                     console.log("Sending...");
                     sendFiles();
                   }}
+                  disabled={connDevices.length === 0}
                 >
                   <SendIcon style={{ fontSize: "40px", color: "white" }} />
                 </IconButton>
@@ -199,65 +230,85 @@ const Send = () => {
             // style={{ display: "flex", flexWrap: "wrap", width: "90vw" }}
             spacing={1}
           >
-            {files.map((file, index) => {
-              return (
-                <Grid
-                  item
-                  xs={12}
-                  sm={6}
-                  lg={4}
-                  key={"file-" + index}
-                  style={{
-                    padding: "5px",
-                    display: "flex",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <div
+            {files
+              .slice()
+              .reverse()
+              .map((file, index) => {
+                return (
+                  <Grid
+                    item
+                    xs={12}
+                    sm={6}
+                    lg={4}
+                    key={"file-" + index}
                     style={{
-                      border: "1px solid",
-                      padding: "5px 10px",
+                      padding: "5px",
                       display: "flex",
-                      width: "260px",
                       justifyContent: "space-between",
-                      margin: "auto",
                     }}
                   >
                     <div
                       style={{
+                        border: "1px solid",
+                        padding: "5px 10px",
                         display: "flex",
-                        alignItems: "center",
-                        width: "220px",
+                        width: "260px",
+                        justifyContent: "space-between",
+                        margin: "auto",
                       }}
                     >
-                      <p
+                      <div
                         style={{
-                          padding: 0,
-                          margin: 0,
-                          fontSize: "17px",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
+                          display: "flex",
+                          alignItems: "center",
+                          width: "220px",
                         }}
                       >
-                        {file.name}
-                      </p>
+                        <p
+                          style={{
+                            padding: 0,
+                            margin: 0,
+                            fontSize: "17px",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                          }}
+                        >
+                          {file.name}
+                        </p>
+                      </div>
+                      <IconButton
+                        color={
+                          fStatus[index] === -1
+                            ? "primary"
+                            : fStatus[index] === 0
+                            ? "warning"
+                            : "success"
+                        }
+                        size="small"
+                        onClick={() => {
+                          if (fStatus[index] !== -1) return;
+
+                          let curr = [...files];
+                          let currSt = [...files];
+                          curr.splice(index, 1);
+                          currSt.splice(index, 1);
+                          setFiles(curr);
+                          setFStatus(currSt);
+                        }}
+                      >
+                        {fStatus[index] === -1 ? (
+                          <CloseIcon />
+                        ) : fStatus[index] === 0 ? (
+                          <DownloadingRoundedIcon />
+                        ) : (
+                          <CheckRoundedIcon />
+                        )}
+                      </IconButton>
                     </div>
-                    <IconButton
-                      color="primary"
-                      size="small"
-                      onClick={() => {
-                        let curr = [...files];
-                        curr.splice(index, 1);
-                        setFiles(curr);
-                      }}
-                    >
-                      <CloseIcon />
-                    </IconButton>
-                  </div>
-                </Grid>
-              );
-            })}
+                  </Grid>
+                );
+              })}
           </Grid>
           <input
             type="file"
@@ -265,7 +316,7 @@ const Send = () => {
             multiple
             hidden
             onChange={(event) => {
-              handleFiles(event);
+              handleFiles(event.target.files);
             }}
           />
         </div>
