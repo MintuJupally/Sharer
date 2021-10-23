@@ -31,6 +31,8 @@ fs.access(downloadPath, fs.constants.R_OK | fs.constants.W_OK, (err) => {
   }
 });
 
+let localSocket = null;
+
 // Getting port for localhost server
 getPort(3000, (err, port) => {
   if (err) {
@@ -50,6 +52,8 @@ getPort(3000, (err, port) => {
   localIo.on("connection", (socket) => {
     console.log(`Local => New user ${socket.id}`);
     socket.emit("connected", socket.id);
+
+    if (!localSocket) localSocket = socket;
 
     socket.on("join-room", (roomId, userId) => {
       socket.join(roomId);
@@ -86,18 +90,16 @@ getPort(3000, (err, port) => {
         writer[filename].write(stream, () => {
           const curr = written[filename] + stream.length;
           written[filename] = curr;
-          console.log(
-            "[" +
-              buffInd +
-              "] - " +
-              stream.length +
-              " " +
-              (100 * (curr / filesize)).toFixed(2)
-          );
+
+          const prog = parseInt(100 * (curr / filesize));
+          console.log("[" + buffInd + "] - " + stream.length + " " + prog);
+
+          localSocket.emit("file-progress", filename, prog);
         });
       });
 
       socket.on("close-stream", (filename) => {
+        localSocket.emit("file-progress", filename, 100);
         console.log(
           "Download complete " +
             filename +

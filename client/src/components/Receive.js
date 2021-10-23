@@ -59,6 +59,7 @@ const Receive = () => {
   const [myDevice, setMyDevice] = useState(null);
 
   const [files, setFiles] = useState([]);
+  const [fileProg, setFileProg] = useState({});
   const [devices, setDevices] = useState([]);
   const [connectedDevice, setConnectedDevice] = useState(null);
   const [connStatus, setConnStatus] = useState(-1);
@@ -72,6 +73,17 @@ const Receive = () => {
       localId = locId;
 
       localSocket.emit("join-room", "download-room-00", locId);
+
+      localSocket.on("file-progress", (filename, fileprogress) => {
+        console.log(filename, fileprogress);
+        const currP = fileProg[filename];
+        if (currP && currP >= fileprogress) return;
+
+        setFileProg((curr) => {
+          curr[filename] = fileprogress;
+          return curr;
+        });
+      });
     });
 
     localSocket.on("connect_error", (err) => {
@@ -486,6 +498,12 @@ const Receive = () => {
                     >
                       <CheckRoundedIcon />
                     </IconButton>
+                  ) : fileProg[file.name] ? (
+                    <CircularProgress
+                      variant="determinate"
+                      value={fileProg[file.name]}
+                      style={{ height: "26px", width: "26px", padding: "7px" }}
+                    />
                   ) : (
                     <CircularProgress
                       style={{ height: "26px", width: "26px", padding: "7px" }}
