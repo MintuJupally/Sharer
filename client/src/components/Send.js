@@ -91,6 +91,19 @@ const Send = () => {
           )
         );
       });
+
+      socket.on("file-sent", (filename) => {
+        console.log("File sent - " + filename);
+
+        console.log(fStatus);
+
+        setFStatus((curr) =>
+          curr.map((el) => ({
+            name: el.name,
+            val: el.name === filename && el.val === 0 ? 1 : el.val,
+          }))
+        );
+      });
     });
 
     socket.on("disconnect", (reason) => {
@@ -107,8 +120,10 @@ const Send = () => {
       st = [];
     for (var i = 0; i < newFiles.length; i++) {
       arr.push(newFiles[i]);
-      st.push(-1);
+      st.push({ name: newFiles[i].name, val: -1 });
     }
+
+    console.log(st);
 
     const pastFiles = [...files];
     setFiles([...pastFiles, ...arr]);
@@ -121,9 +136,9 @@ const Send = () => {
     let currSt = [...fStatus];
 
     files.forEach((file, index) => {
-      if (currSt[index] === -1) {
+      if (currSt[index].val === -1) {
         data.append("toshare", file);
-        currSt[index] = 0;
+        currSt[index].val = 0;
       }
     });
 
@@ -233,7 +248,9 @@ const Send = () => {
             {files
               .slice()
               .reverse()
-              .map((file, index) => {
+              .map((file, ind) => {
+                let index = files.length - 1 - ind;
+
                 return (
                   <Grid
                     item
@@ -279,15 +296,20 @@ const Send = () => {
                       </div>
                       <IconButton
                         color={
-                          fStatus[index] === -1
+                          fStatus[index].val === -1
                             ? "primary"
-                            : fStatus[index] === 0
+                            : fStatus[index].val === 0
                             ? "warning"
                             : "success"
                         }
                         size="small"
+                        style={
+                          fStatus[index].val === 1
+                            ? { color: "lightgreen" }
+                            : null
+                        }
                         onClick={() => {
-                          if (fStatus[index] !== -1) return;
+                          if (fStatus[index].val !== -1) return;
 
                           let curr = [...files];
                           let currSt = [...files];
@@ -297,9 +319,9 @@ const Send = () => {
                           setFStatus(currSt);
                         }}
                       >
-                        {fStatus[index] === -1 ? (
+                        {fStatus[index].val === -1 ? (
                           <CloseIcon />
-                        ) : fStatus[index] === 0 ? (
+                        ) : fStatus[index].val === 0 ? (
                           <DownloadingRoundedIcon />
                         ) : (
                           <CheckRoundedIcon />
