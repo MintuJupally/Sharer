@@ -114,6 +114,8 @@ getPort(3000, (err, port) => {
   let socketPort = null;
   let socketHost = null;
 
+  let senderId = null;
+
   const getNetworkAddress = () => {
     const nets = os.networkInterfaces();
     // console.log(nets);
@@ -158,8 +160,6 @@ getPort(3000, (err, port) => {
       });
 
       socketServerSocket = io;
-
-      let senderId = null;
 
       io.on("connection", (socket) => {
         console.log("New Connection - " + socket.id);
@@ -214,6 +214,7 @@ getPort(3000, (err, port) => {
         console.log("Closing send socket server");
         socketServer = null;
         socketPort = null;
+        mainSocket = null;
         res.send("Socket Server Closed");
       });
     } else {
@@ -272,7 +273,7 @@ getPort(3000, (err, port) => {
           name += pieces[i];
         } else name = filename;
 
-        console.log(file);
+        // console.log(file);
 
         file.on("data", function (data) {
           const currIndex = ++buffIndex;
@@ -287,6 +288,9 @@ getPort(3000, (err, port) => {
 
         file.on("end", function () {
           mainSocket.broadcast.to("app-room-00").emit("end-stream", name);
+
+          console.log("Sender Id - ", senderId);
+          mainSocket.emit("file-sent", filename);
 
           buffIndex = 0;
           console.log("S - File [" + fieldname + "] Finished");
@@ -303,8 +307,7 @@ getPort(3000, (err, port) => {
 
     busboy.on("finish", function () {
       console.log("S - Done parsing form!");
-      res.writeHead(303, { Connection: "close", Location: "/" });
-      res.end();
+      res.send("All files parsed");
     });
 
     req.pipe(busboy);
