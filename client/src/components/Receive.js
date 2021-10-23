@@ -117,9 +117,9 @@ const Receive = () => {
         console.log("Message from " + fromId, msg);
       });
 
-      socket.on("file-stream", (filename, stream, index) => {
-        console.log(index, filename, stream, Date.now());
-        localSocket.emit("save-stream", filename, stream, index);
+      socket.on("file-stream", (filename, stream, index, filesize) => {
+        // console.log(index, filename, stream, Date.now());
+        localSocket.emit("save-stream", filename, stream, index, filesize);
 
         if (!(filename in files)) {
           globalFiles.set(filename, false);

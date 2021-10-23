@@ -135,17 +135,20 @@ const Send = () => {
 
     let currSt = [...fStatus];
 
+    let size = {};
+
     files.forEach((file, index) => {
       if (currSt[index].val === -1) {
         data.append("toshare", file);
         currSt[index].val = 0;
+        size[file.name] = file.size;
       }
     });
 
     setFStatus(currSt);
 
     axios
-      .post("/send", data)
+      .post("/send", data, { headers: { "file-sizes": JSON.stringify(size) } })
       .then((res) => {
         console.log(res.data);
       })

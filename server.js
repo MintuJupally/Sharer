@@ -67,11 +67,7 @@ getPort(3000, (err, port) => {
       let time = {};
       let written = {};
 
-      socket.on("save-stream", (filename, stream, buffInd) => {
-        console.log(
-          "[" + buffInd + "] - " + stream.length + " - " + Date.now()
-        );
-
+      socket.on("save-stream", (filename, stream, buffInd, filesize) => {
         if (!writer[filename]) {
           writer[filename] = fs.createWriteStream(
             `${downloadPath}${filename}`,
@@ -88,9 +84,15 @@ getPort(3000, (err, port) => {
         }
 
         writer[filename].write(stream, () => {
-          written[filename] += stream.length;
+          const curr = written[filename] + stream.length;
+          written[filename] = curr;
           console.log(
-            "[" + buffInd + "] - " + stream.length + " " + written[filename]
+            "[" +
+              buffInd +
+              "] - " +
+              stream.length +
+              " " +
+              (100 * (curr / filesize)).toFixed(2)
           );
         });
       });
@@ -244,14 +246,21 @@ getPort(3000, (err, port) => {
   });
 
   app.post("/send", (req, res, next) => {
+    const fileSizes = JSON.parse(req.headers["file-sizes"]);
+
     let busboy = new BusBoy({
       headers: req.headers,
       highWaterMark: 100,
       fileHwm: 100,
+      preservePath: true,
     });
+
+    progress = {};
 
     busboy.on("file", function (fieldname, file, filename, encoding, mimetype) {
       if (fieldname === "toshare") {
+        progress[filename] = 0;
+
         const time = new Date().getTime();
         let buffIndex = 0;
 
@@ -276,14 +285,23 @@ getPort(3000, (err, port) => {
         // console.log(file);
 
         file.on("data", function (data) {
+          const curr = progress[filename] + data.length;
+          progress[filename] = curr;
+
           const currIndex = ++buffIndex;
+
           console.log(
-            "S - File [" + fieldname + "] got " + data.length + " bytes"
+            "S - File [" +
+              filename +
+              "] got " +
+              data.length +
+              " B - " +
+              parseInt(100 * (curr / fileSizes[filename]) + "%")
           );
 
           mainSocket.broadcast
             .to("app-room-00")
-            .emit("file-stream", name, data, currIndex);
+            .emit("file-stream", name, data, currIndex, fileSizes[filename]);
         });
 
         file.on("end", function () {
@@ -293,7 +311,7 @@ getPort(3000, (err, port) => {
           mainSocket.emit("file-sent", filename);
 
           buffIndex = 0;
-          console.log("S - File [" + fieldname + "] Finished");
+          console.log("S - File [" + filename + "] Finished");
         });
       }
     });
