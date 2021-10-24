@@ -325,7 +325,7 @@ const Send = () => {
                           if (fStatus[index].val !== -1) return;
 
                           let curr = [...files];
-                          let currSt = [...files];
+                          let currSt = [...fStatus];
                           curr.splice(index, 1);
                           currSt.splice(index, 1);
                           setFiles(curr);

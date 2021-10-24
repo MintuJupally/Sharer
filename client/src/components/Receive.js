@@ -131,21 +131,31 @@ const Receive = () => {
         console.log("Message from " + fromId, msg);
       });
 
-      socket.on("file-stream", (filename, stream, index, filesize) => {
-        // console.log(index, filename, stream, Date.now());
-        localSocket.emit("save-stream", filename, stream, index, filesize);
+      socket.on(
+        "file-stream",
+        (filename, stream, index, filesize, sentTime) => {
+          // console.log(index, filename, stream, Date.now());
+          localSocket.emit(
+            "save-stream",
+            filename,
+            stream,
+            index,
+            filesize,
+            sentTime
+          );
 
-        if (!(filename in files)) {
-          globalFiles.set(filename, false);
-          let arr = [];
+          if (!(filename in files)) {
+            globalFiles.set(filename, false);
+            let arr = [];
 
-          globalFiles.forEach((val, key) => {
-            arr.push({ name: key, status: val });
-          });
+            globalFiles.forEach((val, key) => {
+              arr.push({ name: key, status: val });
+            });
 
-          setFiles(arr);
+            setFiles(arr);
+          }
         }
-      });
+      );
 
       socket.on("end-stream", (filename) => {
         // console.log({ filename });
