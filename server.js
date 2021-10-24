@@ -74,7 +74,7 @@ getPort(3000, (err, port) => {
       socket.on("save-stream", (filename, stream, buffInd, filesize) => {
         if (!writer[filename]) {
           writer[filename] = fs.createWriteStream(
-            `${downloadPath}${filename}`,
+            `${downloadPath}${filename.substr(filename.split("/")[0] + 1)}`,
             { highWaterMark: 128 * 1024 }
           );
           time[filename] = Date.now();

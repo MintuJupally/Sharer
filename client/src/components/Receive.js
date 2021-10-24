@@ -489,7 +489,7 @@ const Receive = () => {
                         overflow: "hidden",
                       }}
                     >
-                      {file.name}
+                      {file.name.substr(file.name.split("/")[0] + 1)}
                     </p>
                   </div>
                   {file.status ? (

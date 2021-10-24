@@ -119,8 +119,14 @@ const Send = () => {
     let arr = [],
       st = [];
     for (var i = 0; i < newFiles.length; i++) {
-      arr.push(newFiles[i]);
-      st.push({ name: newFiles[i].name, val: -1 });
+      const renFile = new File(
+        [newFiles[i]],
+        Math.floor(100000 + Math.random() * 900000) + "/" + newFiles[i].name,
+        { type: newFiles[i].type }
+      );
+
+      arr.push(renFile);
+      st.push({ name: renFile.name, val: -1 });
     }
 
     console.log(st);
@@ -294,7 +300,7 @@ const Send = () => {
                             overflow: "hidden",
                           }}
                         >
-                          {file.name}
+                          {file.name.substr(file.name.split("/")[0] + 1)}
                         </p>
                       </div>
                       <IconButton
