@@ -71,7 +71,7 @@ getPort(3000, (err, port) => {
       let time = {};
       let written = {};
 
-      socket.on("save-stream", (filename, stream, buffInd, filesize, last) => {
+      socket.on("save-stream", (filename, stream, buffInd, filesize) => {
         if (!writer[filename]) {
           writer[filename] = fs.createWriteStream(
             `${downloadPath}${filename}`,
@@ -95,18 +95,6 @@ getPort(3000, (err, port) => {
           console.log("[" + buffInd + "] - " + stream.length + " " + prog);
 
           localSocket.emit("file-progress", filename, prog);
-
-          if (last === "last") {
-            localSocket.emit("file-progress", filename, 100);
-            console.log(
-              "Download complete " +
-                filename +
-                " - " +
-                (Date.now() - time[filename]) / 1000 +
-                " s"
-            );
-            writer[filename].end();
-          }
         });
       });
 
@@ -305,10 +293,13 @@ getPort(3000, (err, port) => {
           if (!data) {
             buff = data = chunk;
             return;
-          } else if (data.length <= 64 * 1024) {
+          } else if (data.length <= 128 * 1024) {
             buff = data = Buffer.concat([data, chunk]);
             return;
-          } else buff = null;
+          }
+
+          buff = null;
+          data = Buffer.concat([data, chunk]);
 
           const curr = progress[filename] + data.length;
           progress[filename] = curr;
@@ -337,14 +328,13 @@ getPort(3000, (err, port) => {
                 name,
                 buff,
                 buffIndex + 1,
-                fileSizes[filename],
-                "last"
+                fileSizes[filename]
               );
           }
 
           buff = null;
 
-          // mainSocket.broadcast.to("app-room-00").emit("end-stream", name);
+          mainSocket.broadcast.to("app-room-00").emit("end-stream", name);
 
           console.log("Sender Id - ", senderId);
           mainSocket.emit("file-sent", filename);
