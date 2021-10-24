@@ -92,6 +92,10 @@ const Send = () => {
         );
       });
 
+      socket.on("download-progress", (filename, fileprogress, deviceName) => {
+        console.log(filename, fileprogress, deviceName);
+      });
+
       socket.on("file-sent", (filename) => {
         console.log("File sent - " + filename);
 
@@ -300,7 +304,7 @@ const Send = () => {
                             overflow: "hidden",
                           }}
                         >
-                          {file.name.substr(file.name.split("/")[0] + 1)}
+                          {file.name.substr(file.name.split("/")[0].length + 1)}
                         </p>
                       </div>
                       <IconButton

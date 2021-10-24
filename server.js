@@ -74,7 +74,9 @@ getPort(3000, (err, port) => {
       socket.on("save-stream", (filename, stream, buffInd, filesize) => {
         if (!writer[filename]) {
           writer[filename] = fs.createWriteStream(
-            `${downloadPath}${filename.substr(filename.split("/")[0] + 1)}`,
+            `${downloadPath}${filename.substr(
+              filename.split("/")[0].length + 1
+            )}`,
             { highWaterMark: 128 * 1024 }
           );
           time[filename] = Date.now();
@@ -193,6 +195,12 @@ getPort(3000, (err, port) => {
               .to(senderId)
               .emit("new-receiver", userId, deviceName);
           }
+
+          socket.on("receiver-download-progress", (filename, fileprogress) => {
+            socket.broadcast
+              .to(senderId)
+              .emit("download-progress", filename, fileprogress, deviceName);
+          });
 
           socket.on("disconnect", (reason) => {
             console.log(reason);

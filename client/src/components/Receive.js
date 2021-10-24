@@ -79,6 +79,8 @@ const Receive = () => {
         const currP = fileProg[filename];
         if (currP && currP >= fileprogress) return;
 
+        socket.emit("receiver-download-progress", filename, fileprogress);
+
         setFileProg((curr) => {
           curr[filename] = fileprogress;
           return curr;
@@ -489,7 +491,7 @@ const Receive = () => {
                         overflow: "hidden",
                       }}
                     >
-                      {file.name.substr(file.name.split("/")[0] + 1)}
+                      {file.name.substr(file.name.split("/")[0].length + 1)}
                     </p>
                   </div>
                   {file.status ? (
