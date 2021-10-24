@@ -71,7 +71,7 @@ getPort(3000, (err, port) => {
       let time = {};
       let written = {};
 
-      socket.on("save-stream", (filename, stream, buffInd, filesize) => {
+      socket.on("save-stream", (filename, stream, buffInd, filesize, last) => {
         if (!writer[filename]) {
           writer[filename] = fs.createWriteStream(
             `${downloadPath}${filename}`,
@@ -95,6 +95,18 @@ getPort(3000, (err, port) => {
           console.log("[" + buffInd + "] - " + stream.length + " " + prog);
 
           localSocket.emit("file-progress", filename, prog);
+
+          if (last === "last") {
+            localSocket.emit("file-progress", filename, 100);
+            console.log(
+              "Download complete " +
+                filename +
+                " - " +
+                (Date.now() - time[filename]) / 1000 +
+                " s"
+            );
+            writer[filename].end();
+          }
         });
       });
 
@@ -286,10 +298,20 @@ getPort(3000, (err, port) => {
 
         // console.log(file);
 
-        file.on("data", function (data) {
+        let buff = null;
+
+        file.on("data", function (chunk) {
+          let data = buff;
+          if (!data) {
+            buff = data = chunk;
+            return;
+          } else if (data.length <= 64 * 1024) {
+            buff = data = Buffer.concat([data, chunk]);
+            return;
+          } else buff = null;
+
           const curr = progress[filename] + data.length;
           progress[filename] = curr;
-
           const currIndex = ++buffIndex;
 
           console.log(
@@ -307,7 +329,22 @@ getPort(3000, (err, port) => {
         });
 
         file.on("end", function () {
-          mainSocket.broadcast.to("app-room-00").emit("end-stream", name);
+          if (buff) {
+            mainSocket.broadcast
+              .to("app-room-00")
+              .emit(
+                "file-stream",
+                name,
+                buff,
+                buffIndex + 1,
+                fileSizes[filename],
+                "last"
+              );
+          }
+
+          buff = null;
+
+          // mainSocket.broadcast.to("app-room-00").emit("end-stream", name);
 
           console.log("Sender Id - ", senderId);
           mainSocket.emit("file-sent", filename);
