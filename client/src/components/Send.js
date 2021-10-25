@@ -117,8 +117,8 @@ const Send = () => {
     });
   };
 
-  const handleFiles = (newFiles) => {
-    console.log(newFiles);
+  const handleFiles = (inFiles) => {
+    const newFiles = inFiles;
 
     let arr = [],
       st = [];
@@ -352,6 +352,8 @@ const Send = () => {
             hidden
             onChange={(event) => {
               handleFiles(event.target.files);
+
+              event.target.value = null;
             }}
           />
         </div>

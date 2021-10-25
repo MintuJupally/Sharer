@@ -131,36 +131,31 @@ const Receive = () => {
         console.log("Message from " + fromId, msg);
       });
 
-      socket.on(
-        "file-stream",
-        (filename, stream, index, filesize, sentTime) => {
-          // console.log(index, filename, stream, Date.now());
-          localSocket.emit(
-            "save-stream",
-            filename,
-            stream,
-            index,
-            filesize,
-            sentTime
-          );
+      socket.on("file-stream", (filename, stream, index, filesize) => {
+        console.log("file-stream - " + filename);
+        localSocket.emit("save-stream", filename, stream, index, filesize);
 
-          if (!(filename in files)) {
-            globalFiles.set(filename, false);
-            let arr = [];
+        if (!(filename in files)) {
+          globalFiles.set(filename, false);
+          let arr = [];
 
-            globalFiles.forEach((val, key) => {
-              arr.push({ name: key, status: val });
-            });
+          console.log(globalFiles);
 
-            setFiles(arr);
-          }
+          globalFiles.forEach((val, key) => {
+            arr.push({ name: key, status: val });
+          });
+
+          setFiles(arr);
         }
-      );
+      });
 
       socket.on("end-stream", (filename) => {
-        // console.log({ filename });
+        console.log("end-stream - " + filename);
+
         globalFiles.set(filename, true);
         let arr = [];
+
+        console.log(globalFiles);
 
         globalFiles.forEach((val, key) => {
           arr.push({ name: key, status: val });
@@ -314,11 +309,24 @@ const Receive = () => {
       sockets[i].removeAllListeners();
       sockets[i].disconnect();
     }
+
+    socket.disconnect();
+    socket = null;
+    localSocket.disconnect();
+    localSocket = null;
+    id = null;
+    localId = null;
+
+    sockets = [];
+
+    globalFiles.clear();
+    globalDevices = [];
+    posResCount = 0;
   };
 
   return (
     <div style={{ padding: "40px 0px" }}>
-      <GoBack color="secondary" handle={disconnectSockets} />
+      <GoBack color="secondary" task={disconnectSockets} />
       {!port ? (
         <div>
           <div

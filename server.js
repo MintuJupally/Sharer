@@ -71,46 +71,34 @@ getPort(3000, (err, port) => {
       let time = {};
       let written = {};
 
-      socket.on(
-        "save-stream",
-        (filename, stream, buffInd, filesize, sentTime) => {
-          if (!writer[filename]) {
-            writer[filename] = fs.createWriteStream(
-              `${downloadPath}${filename.substr(
-                filename.split("/")[0].length + 1
-              )}`,
-              { highWaterMark: 128 * 1024 }
-            );
-            time[filename] = Date.now();
-            written[filename] = 0;
+      socket.on("save-stream", (filename, stream, buffInd, filesize) => {
+        if (!writer[filename]) {
+          writer[filename] = fs.createWriteStream(
+            `${downloadPath}${filename.substr(
+              filename.split("/")[0].length + 1
+            )}`,
+            { highWaterMark: 128 * 1024 }
+          );
+          time[filename] = Date.now();
+          written[filename] = 0;
 
-            console.log(
-              filename +
-                " - writableHighWaterMark : " +
-                writer[filename].writableHighWaterMark
-            );
-          }
-
-          writer[filename].write(stream, () => {
-            const curr = written[filename] + stream.length;
-            written[filename] = curr;
-
-            const prog = parseInt(100 * (curr / filesize));
-            console.log(
-              "[" +
-                buffInd +
-                "] - " +
-                stream.length +
-                " " +
-                prog +
-                " - delay : " +
-                (Date.now() - sentTime)
-            );
-
-            localSocket.emit("file-progress", filename, prog);
-          });
+          console.log(
+            filename +
+              " - writableHighWaterMark : " +
+              writer[filename].writableHighWaterMark
+          );
         }
-      );
+
+        writer[filename].write(stream, () => {
+          const curr = written[filename] + stream.length;
+          written[filename] = curr;
+
+          const prog = parseInt(100 * (curr / filesize));
+          console.log("[" + buffInd + "] - " + stream.length + " " + prog);
+
+          localSocket.emit("file-progress", filename, prog);
+        });
+      });
 
       socket.on("close-stream", (filename) => {
         localSocket.emit("file-progress", filename, 100);
@@ -336,14 +324,7 @@ getPort(3000, (err, port) => {
 
           mainSocket.broadcast
             .to("app-room-00")
-            .emit(
-              "file-stream",
-              name,
-              data,
-              currIndex,
-              fileSizes[filename],
-              Date.now()
-            );
+            .emit("file-stream", name, data, currIndex, fileSizes[filename]);
         });
 
         file.on("end", function () {
