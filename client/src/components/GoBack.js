@@ -5,7 +5,7 @@ import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 
 const GoBack = ({ color, task }) => {
   return (
-    <div style={{ position: "absolute", top: 0, zIndex: 1 }}>
+    <div style={{ position: "fixed", top: 0, zIndex: 1 }}>
       <Button
         variant="outlined"
         color={color}

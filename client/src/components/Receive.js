@@ -60,9 +60,12 @@ const Receive = () => {
 
   const [files, setFiles] = useState([]);
   const [fileProg, setFileProg] = useState({});
+
   const [devices, setDevices] = useState([]);
   const [connectedDevice, setConnectedDevice] = useState(null);
   const [connStatus, setConnStatus] = useState(-1);
+
+  const [time, setTime] = useState(Date.now());
 
   const initialiseSocket = () => {
     socket = io.connect(`http://${connectedDevice.ip}:${port}/`);
@@ -74,17 +77,22 @@ const Receive = () => {
 
       localSocket.emit("join-room", "download-room-00", locId);
 
-      localSocket.on("file-progress", (filename, fileprogress) => {
-        console.log(filename, fileprogress);
-        const currP = fileProg[filename];
-        if (currP && currP >= fileprogress) return;
+      localSocket.on("file-progress", (filename, currNet, filesize) => {
+        const fileprogress = parseInt(100 * (currNet / filesize));
 
-        socket.emit("receiver-download-progress", filename, fileprogress);
+        if (fileProg[filename]) {
+          const currP = fileProg[filename].prog;
+          if (currP && currP >= fileprogress) return;
 
-        setFileProg((curr) => {
-          curr[filename] = fileprogress;
-          return curr;
-        });
+          // socket.emit("receiver-download-progress", filename, fileprogress);
+
+          setFileProg((curr) => {
+            curr[filename].prog = fileprogress;
+            curr[filename].downloaded = currNet;
+
+            return curr;
+          });
+        }
       });
     });
 
@@ -127,19 +135,19 @@ const Receive = () => {
         console.log("Room joined");
       });
 
-      socket.on("incoming-message", (fromId, msg) => {
-        console.log("Message from " + fromId, msg);
-      });
-
       socket.on("file-stream", (filename, stream, index, filesize) => {
-        console.log("file-stream - " + filename);
+        if (index === 1) {
+          setFileProg((curr) => {
+            curr[filename] = { start: Date.now(), size: filesize };
+            return curr;
+          });
+        }
+
         localSocket.emit("save-stream", filename, stream, index, filesize);
 
         if (!(filename in files)) {
           globalFiles.set(filename, false);
           let arr = [];
-
-          console.log(globalFiles);
 
           globalFiles.forEach((val, key) => {
             arr.push({ name: key, status: val });
@@ -150,12 +158,8 @@ const Receive = () => {
       });
 
       socket.on("end-stream", (filename) => {
-        console.log("end-stream - " + filename);
-
         globalFiles.set(filename, true);
         let arr = [];
-
-        console.log(globalFiles);
 
         globalFiles.forEach((val, key) => {
           arr.push({ name: key, status: val });
@@ -250,6 +254,10 @@ const Receive = () => {
   };
 
   useEffect(() => {
+    let timer = setInterval(() => {
+      setTime(Date.now());
+    }, 1000);
+
     axios
       .get("/device-name")
       .then((res) => {
@@ -260,6 +268,7 @@ const Receive = () => {
       });
 
     return () => {
+      clearInterval(timer);
       if (socket) {
         socket.disconnect();
       }
@@ -272,10 +281,6 @@ const Receive = () => {
       // initialiseSocket();
     }
   }, [port]);
-
-  useEffect(() => {
-    console.log(devices);
-  }, [devices]);
 
   useEffect(() => {
     if (connectedDevice) {
@@ -364,7 +369,7 @@ const Receive = () => {
               onClick={() => {
                 if (isLoading) return;
                 const val = document.getElementById("port-num").value.trim();
-                console.log(val);
+
                 if (val.length > 0) {
                   if (/^[0-9]*$/.test(val)) {
                     setIsLoading(true);
@@ -469,6 +474,30 @@ const Receive = () => {
           spacing={1}
         >
           {files.map((file, index) => {
+            let estm = null;
+            if (fileProg[file.name] && fileProg[file.name].prog > 0) {
+              let t =
+                ((time - fileProg[file.name].start) *
+                  (fileProg[file.name].size - fileProg[file.name].downloaded)) /
+                fileProg[file.name].downloaded;
+              t = parseInt(t / 1000);
+
+              estm = "";
+              if (t > 86400) {
+                estm += parseInt(t / 86400) + "d ";
+                t %= 86400;
+              }
+              if (t > 3600) {
+                estm += parseInt(t / 3600) + "h ";
+                t %= 3600;
+              }
+              if (t > 60) {
+                estm += parseInt(t / 60) + "min ";
+                t %= 60;
+              }
+              estm += t + "s";
+            }
+
             return (
               <Grid
                 item
@@ -498,6 +527,7 @@ const Receive = () => {
                       alignItems: "center",
                       width: "220px",
                     }}
+                    className={!file.status ? "filebox" : ""}
                   >
                     <p
                       style={{
@@ -508,8 +538,23 @@ const Receive = () => {
                         whiteSpace: "nowrap",
                         overflow: "hidden",
                       }}
+                      className="filename"
                     >
                       {file.name.substr(file.name.split("/")[0].length + 1)}
+                    </p>
+                    <p
+                      style={{
+                        padding: 0,
+                        margin: 0,
+                        fontSize: "17px",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        fontStyle: "italic",
+                      }}
+                      className="estimate"
+                    >
+                      {estm ? estm : null}
                     </p>
                   </div>
                   {file.status ? (
@@ -518,10 +563,10 @@ const Receive = () => {
                     >
                       <CheckRoundedIcon />
                     </IconButton>
-                  ) : fileProg[file.name] ? (
+                  ) : fileProg[file.name] && fileProg[file.name].prog ? (
                     <CircularProgress
                       variant="determinate"
-                      value={fileProg[file.name]}
+                      value={fileProg[file.name].prog}
                       style={{ height: "26px", width: "26px", padding: "7px" }}
                     />
                   ) : (

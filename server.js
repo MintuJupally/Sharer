@@ -93,10 +93,10 @@ getPort(3000, (err, port) => {
           const curr = written[filename] + stream.length;
           written[filename] = curr;
 
-          const prog = parseInt(100 * (curr / filesize));
-          console.log("[" + buffInd + "] - " + stream.length + " " + prog);
+          // const prog = parseInt(100 * (curr / filesize));
+          // console.log("[" + buffInd + "] - " + stream.length + " " + prog);
 
-          localSocket.emit("file-progress", filename, prog);
+          localSocket.emit("file-progress", filename, curr, filesize);
         });
       });
 
@@ -163,6 +163,8 @@ getPort(3000, (err, port) => {
           origin: "*",
           credentials: true,
         },
+        pingTimeout: 80000000,
+        pingInterval: 86400000,
       });
 
       socketServerSocket = io;

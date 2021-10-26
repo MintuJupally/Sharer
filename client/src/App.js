@@ -15,7 +15,7 @@ const App = () => {
   return (
     <div className="App">
       <div style={{ minHeight: "100vh", width: "100%" }}>{routing}</div>
-      <div style={{ position: "absolute", right: 0, top: 0 }}>
+      <div style={{ position: "fixed", right: 0, top: 0 }}>
         <IconButton
           color="success"
           size="large"

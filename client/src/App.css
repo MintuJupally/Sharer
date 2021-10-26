@@ -56,3 +56,15 @@ button{
   font-size: 20px;
   border-radius: 0px 20px 20px 0px; */
 }
+
+.estimate{
+  display: none;
+}
+
+.filebox:hover .filename{
+  display: none;
+}
+
+.filebox:hover .estimate{
+  display: block;
+}
