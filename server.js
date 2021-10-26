@@ -109,7 +109,8 @@ getPort(3000, (err, port) => {
             (Date.now() - time[filename]) / 1000 +
             " s"
         );
-        writer[filename].end();
+
+        if (writer[filename]) writer[filename].end();
       });
     });
   });
