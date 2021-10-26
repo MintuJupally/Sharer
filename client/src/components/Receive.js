@@ -307,26 +307,31 @@ const Receive = () => {
     setConnStatus(-1);
   };
 
-  const disconnectSockets = () => {
+  const disconnectSockets = (navigateBack) => {
     console.log("disconnecting...");
-    console.log(sockets);
+
     for (let i = 0; i < sockets.length; i++) {
       sockets[i].removeAllListeners();
       sockets[i].disconnect();
     }
+    sockets = [];
 
-    socket.disconnect();
-    socket = null;
-    localSocket.disconnect();
-    localSocket = null;
+    if (socket) {
+      socket.disconnect();
+      socket = null;
+    }
+    if (localSocket) {
+      localSocket.disconnect();
+      localSocket = null;
+    }
     id = null;
     localId = null;
-
-    sockets = [];
 
     globalFiles.clear();
     globalDevices = [];
     posResCount = 0;
+
+    navigateBack();
   };
 
   return (

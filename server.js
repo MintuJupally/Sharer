@@ -132,6 +132,7 @@ getPort(3000, (err, port) => {
   app.get("/new-server", (req, res, next) => {
     if (socketServer) {
       console.log("Server already exists");
+
       res.status(403).json({
         message: "Socket Server already exists",
         host: socketHost,
@@ -223,10 +224,15 @@ getPort(3000, (err, port) => {
   app.get("/close-server", (req, res) => {
     console.log("Checking send socket server to close ....");
     if (socketServer) {
-      socketServerSocket.disconnectSockets();
+      if (socketServerSocket) {
+        socketServerSocket.disconnectSockets();
+        socketServerSocket = null;
+      }
+
       socketServer.close(() => {
         console.log("Closing send socket server");
         socketServer = null;
+        socketHost = null;
         socketPort = null;
         mainSocket = null;
         res.send("Socket Server Closed");

@@ -23,6 +23,8 @@ const Send = () => {
   const [myDevice, setMyDevice] = useState(null);
   const [connDevices, setConnDevices] = useState([]);
 
+  const [showGoBack, setShowGoBack] = useState(true);
+
   const createServer = () => {
     axios
       .get("/new-server")
@@ -42,15 +44,27 @@ const Send = () => {
       });
   };
 
-  const closeServer = () => {
-    axios
-      .get("/close-server")
-      .then((res) => {
-        console.log(res.data);
-      })
-      .catch((err) => {
-        console.error(err.response.data);
-      });
+  const closeServer = (navigateBack) => {
+    setAddress(null);
+    setShowGoBack(false);
+
+    if (socket) {
+      socket.disconnect();
+      socket = null;
+
+      axios
+        .get("/close-server")
+        .then((res) => {
+          console.log(res.data);
+
+          navigateBack();
+        })
+        .catch((err) => {
+          console.error(err.response.data);
+
+          navigateBack();
+        });
+    } else navigateBack();
   };
 
   const initialiseSocket = () => {
@@ -58,10 +72,16 @@ const Send = () => {
 
     socket.on("connect_error", (err) => {
       console.log(err);
+
+      socket.disconnect();
+      socket = null;
     });
 
     socket.on("error", (err) => {
       console.log(err);
+
+      socket.disconnect();
+      socket = null;
     });
 
     socket.on("connected", async (myId) => {
@@ -114,6 +134,7 @@ const Send = () => {
       console.log(reason);
 
       socket.disconnect();
+      socket = null;
     });
   };
 
@@ -168,16 +189,7 @@ const Send = () => {
   };
 
   useEffect(() => {
-    console.log("files...");
-    console.log(files);
-  }, [files]);
-
-  useEffect(() => {
     createServer();
-
-    return () => {
-      if (socket) socket.disconnect();
-    };
   }, []);
 
   useEffect(() => {
@@ -195,7 +207,7 @@ const Send = () => {
         boxSizing: "border-box",
       }}
     >
-      <GoBack color="primary" task={closeServer} />
+      {showGoBack ? <GoBack color="primary" task={closeServer} /> : null}
       {address ? (
         <div>
           <div>Communication through port {address.port}</div>
