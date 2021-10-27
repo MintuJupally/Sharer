@@ -18,20 +18,34 @@
         justify-content: center;
         align-items: center;
       }
-    </style>
-  </head>
-  <body>
-    <div
-      style="
+
+      #title {
         color: white;
         position: absolute;
         top: 0;
         bottom: 0;
         display: flex;
+        opacity: 0;
         justify-content: center;
         align-items: center;
-      "
-    >
+        transition: opacity 0.2s ease-in;
+      }
+
+      #title h2 {
+        margin-right: 40px;
+        font-weight: 500;
+      }
+    </style>
+
+    <script>
+      window.onload = (event) => {
+        document.getElementById("title").style.opacity = 1;
+      };
+    </script>
+  </head>
+  <body>
+    <div id="title">
+      <img src="./assets/logo/SharerLogo.png" height="80px" />
       <h2>Sharer</h2>
     </div>
   </body>

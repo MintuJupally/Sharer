@@ -25,7 +25,7 @@ const createMainWindow = (PORT) => {
   setTimeout(() => {
     mainWindow.close();
     createWindow(PORT);
-  }, 2000);
+  }, 3000);
 
   portEvents.removeAllListeners("port");
 };
